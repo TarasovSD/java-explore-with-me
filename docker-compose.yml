@@ -39,7 +39,7 @@ services:
     image: ewm-service
     container_name: ewm-service-container
     ports:
-      - "9092:9092"
+      - "9098:9098"
     depends_on:
       - ewm-db
     environment:

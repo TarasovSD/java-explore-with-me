@@ -20,7 +20,7 @@ public class CompilationAdminController {
     private final WebClient webClient;
 
     public CompilationAdminController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://localhost:9092/").build();
+        webClient = builder.baseUrl("http://localhost:9098/").build();
     }
 
     @PostMapping()

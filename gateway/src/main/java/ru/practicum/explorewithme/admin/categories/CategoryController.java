@@ -18,7 +18,7 @@ public class CategoryController {
     private final WebClient webClient;
 
     public CategoryController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://localhost:9092/").build();
+        webClient = builder.baseUrl("http://localhost:9098/").build();
     }
 
     @PostMapping()
