@@ -25,8 +25,8 @@ public class EventPublicController {
     private final WebClient statsWebClient;
 
     public EventPublicController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://localhost:9098/").build();
-        statsWebClient = builder.baseUrl("http://localhost:9090").build();
+        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+        statsWebClient = builder.baseUrl("http://stats-server:9090/").build();
     }
 
     @GetMapping("/{eventId}")

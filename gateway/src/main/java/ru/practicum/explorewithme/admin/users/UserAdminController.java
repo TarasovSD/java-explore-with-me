@@ -19,7 +19,7 @@ public class UserAdminController {
     private final WebClient webClient;
 
     public UserAdminController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://localhost:9098/").build();
+        webClient = builder.baseUrl("http://ewm-service:9098/").build();
     }
 
     @GetMapping()
