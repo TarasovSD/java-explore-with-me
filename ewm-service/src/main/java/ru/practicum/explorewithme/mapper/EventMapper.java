@@ -1,5 +1,6 @@
 package ru.practicum.explorewithme.mapper;
 
+import lombok.experimental.UtilityClass;
 import ru.practicum.explorewithme.model.User;
 import ru.practicum.explorewithme.dto.event.EventDto;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
@@ -10,9 +11,10 @@ import ru.practicum.explorewithme.model.Status;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+@UtilityClass
 public class EventMapper {
-    public static Event toEvent(Long eventId, EventDto eventDto, Location location, LocalDateTime creationOn, User initiatorId,
-                                Long confirmedRequests, Long views, LocalDateTime publishedOn, Status state) {
+    public Event toEvent(Long eventId, EventDto eventDto, Float lat, Float lon, LocalDateTime creationOn, User initiatorId,
+                         LocalDateTime publishedOn, Status state) {
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime eventDate = LocalDateTime.parse(eventDto.getEventDate(), dateTimeFormatter);
         return new Event(eventId,
@@ -20,8 +22,8 @@ public class EventMapper {
                 eventDto.getCategory(),
                 eventDto.getDescription(),
                 eventDate,
-                location,
-                confirmedRequests,
+                lat,
+                lon,
                 eventDto.getPaid(),
                 eventDto.getParticipantLimit(),
                 eventDto.getRequestModeration(),
@@ -29,18 +31,17 @@ public class EventMapper {
                 creationOn,
                 initiatorId,
                 publishedOn,
-                state,
-                views);
+                state);
     }
 
-    public static EventFullDto toEventFullDto(Event event, EventFullDto.CategoryDtoForEvent categoryDtoForEvent,
-                                              User user, Location location) {
+    public EventFullDto toEventFullDto(Event event, EventFullDto.CategoryDtoForEvent categoryDtoForEvent,
+                                       User user, Location location, Long numberOfConfirmedRequests, Long numberOfViews) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String eventDate = event.getEventDate().format(formatter);
         return new EventFullDto(event.getId(),
                 event.getAnnotation(),
                 categoryDtoForEvent,
-                event.getConfirmedRequests(),
+                numberOfConfirmedRequests,
                 event.getCreatedOn(),
                 event.getDescription(),
                 eventDate,
@@ -52,10 +53,10 @@ public class EventMapper {
                 event.getRequestModeration(),
                 event.getState(),
                 event.getTitle(),
-                event.getViews());
+                numberOfViews);
     }
 
-    public static Event toEventFromEventFullDto(EventFullDto eventDto, Location location, User user) {
+    public Event toEventFromEventFullDto(EventFullDto eventDto, Float lat, Float lon, User user) {
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime eventDate = LocalDateTime.parse(eventDto.getEventDate(), dateTimeFormatter);
         return new Event(eventDto.getId(),
@@ -63,8 +64,8 @@ public class EventMapper {
                 eventDto.getCategory().getId(),
                 eventDto.getDescription(),
                 eventDate,
-                location,
-                eventDto.getConfirmedRequests(),
+                lat,
+                lon,
                 eventDto.getPaid(),
                 eventDto.getParticipantLimit(),
                 eventDto.getRequestModeration(),
@@ -72,7 +73,6 @@ public class EventMapper {
                 eventDto.getCreatedOn(),
                 user,
                 eventDto.getPublishedOn(),
-                eventDto.getState(),
-                eventDto.getViews());
+                eventDto.getState());
     }
 }

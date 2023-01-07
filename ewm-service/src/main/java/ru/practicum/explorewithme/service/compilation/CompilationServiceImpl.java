@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+import ru.practicum.explorewithme.dto.HitDto;
 import ru.practicum.explorewithme.dto.compilation.CompilationDto;
 import ru.practicum.explorewithme.dto.compilation.CompilationFullDto;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
@@ -17,9 +19,7 @@ import ru.practicum.explorewithme.mapper.EventMapper;
 import ru.practicum.explorewithme.model.*;
 import ru.practicum.explorewithme.repository.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -28,27 +28,30 @@ public class CompilationServiceImpl implements CompilationService {
 
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
-
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
-    private final LocationRepository locationRepository;
+
+    private final RequestRepository requestRepository;
+
+    private final WebClient webClient;
 
 
-    public CompilationServiceImpl(CompilationRepository compilationRepository, EventRepository eventRepository, CategoryRepository categoryRepository, UserRepository userRepository, LocationRepository locationRepository) {
+    public CompilationServiceImpl(CompilationRepository compilationRepository, EventRepository eventRepository, CategoryRepository categoryRepository, UserRepository userRepository, RequestRepository requestRepository, WebClient.Builder builder) {
         this.compilationRepository = compilationRepository;
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
-        this.locationRepository = locationRepository;
+        this.requestRepository = requestRepository;
+        webClient = builder.baseUrl("http://stats-server:9090/").build();
     }
 
 
     @Override
     @Transactional
-    public CompilationFullDto createCompilation(CompilationDto compilationDto) {
+    public CompilationFullDto create(CompilationDto compilationDto) {
         Compilation compilation = CompilationMapper.toCompilation(compilationDto);
         List<EventFullDto> events = new ArrayList<>();
-        List<Event> eventList = new ArrayList<>();
+        Set<Event> eventsList = new HashSet<>();
         for (Long i : compilationDto.getEvents()) {
             Optional<Event> eventOpt = eventRepository.findById(i);
             Event event;
@@ -59,18 +62,17 @@ public class CompilationServiceImpl implements CompilationService {
             }
             EventFullDto eventFullDto = mapToEventFullDto(event.getInitiatorId().getId(), event);
             events.add(eventFullDto);
-            Location location = event.getLocation();
             User user = userRepository.findById(eventFullDto.getInitiator().getId()).get();
-            eventList.add(EventMapper.toEventFromEventFullDto(eventFullDto, location, user));
+            eventsList.add(EventMapper.toEventFromEventFullDto(eventFullDto, event.getLat(), event.getLon(), user));
         }
-        compilation.setEventList(eventList);
+        compilation.setEvents(eventsList);
         Compilation compilationToSave = compilationRepository.save(compilation);
         return CompilationMapper.toCompilationFullDto(compilationToSave, events);
     }
 
     @Override
     @Transactional
-    public void removeCompilationById(Long compId) {
+    public void removeById(Long compId) {
         Optional<Compilation> compilationToDeleteOpt = compilationRepository.findById(compId);
         Compilation compilationToDelete;
         if (compilationToDeleteOpt.isPresent()) {
@@ -82,7 +84,7 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     @Override
-    public CompilationFullDto getCompilationById(Long compId) {
+    public CompilationFullDto getById(Long compId) {
         Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
         Compilation compilation;
         if (compilationOpt.isPresent()) {
@@ -90,7 +92,7 @@ public class CompilationServiceImpl implements CompilationService {
         } else {
             throw new CompilationNotFoundException("Подборка не найдена");
         }
-        List<Event> eventsList = compilation.getEventList();
+        Set<Event> eventsList = compilation.getEvents();
         List<EventFullDto> events = new ArrayList<>();
         for (Event event : eventsList) {
             EventFullDto eventFullDto = mapToEventFullDto(event.getInitiatorId().getId(), event);
@@ -100,11 +102,11 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     @Override
-    public List<CompilationFullDto> getCompilations(Boolean pinned, PageRequest pageRequest) {
+    public List<CompilationFullDto> get(Boolean pinned, PageRequest pageRequest) {
         List<Compilation> compilations = compilationRepository.findAll();
         List<CompilationFullDto> compilationDtoList = new ArrayList<>();
         for (Compilation compilation : compilations) {
-            List<Event> events = compilation.getEventList();
+            Set<Event> events = compilation.getEvents();
             List<EventFullDto> eventFullDtoList = new ArrayList<>();
             for (Event event : events) {
                 EventFullDto eventFullDto = mapToEventFullDto(event.getInitiatorId().getId(), event);
@@ -118,7 +120,7 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     @Transactional
-    public void addEventToCompilation(Long eventId, Long compId) {
+    public void addEvent(Long eventId, Long compId) {
         Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
         Compilation compilation;
         if (compilationOpt.isPresent()) {
@@ -140,7 +142,7 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     @Transactional
-    public void pinCompilation(Long compId) {
+    public void pin(Long compId) {
         Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
         Compilation compilation;
         if (compilationOpt.isPresent()) {
@@ -154,7 +156,7 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     @Transactional
-    public void removeEventFromCompilation(Long eventId, Long compId) {
+    public void removeEvent(Long eventId, Long compId) {
         Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
         Compilation compilation;
         if (compilationOpt.isPresent()) {
@@ -169,15 +171,15 @@ public class CompilationServiceImpl implements CompilationService {
         } else {
             throw new EventNotFoundException("Событие не найдено");
         }
-        List<Event> eventList = compilation.getEventList();
+        Set<Event> eventList = compilation.getEvents();
         eventList.remove(event);
-        compilation.setEventList(eventList);
+        compilation.setEvents(eventList);
         compilationRepository.save(compilation);
     }
 
     @Override
     @Transactional
-    public void unpinCompilation(Long compId) {
+    public void unpin(Long compId) {
         Optional<Compilation> compilationOpt = compilationRepository.findById(compId);
         Compilation compilation;
         if (compilationOpt.isPresent()) {
@@ -204,6 +206,20 @@ public class CompilationServiceImpl implements CompilationService {
         } else {
             throw new UserNotFoundException("Пользователь не найден");
         }
-        return EventMapper.toEventFullDto(event, CategoryMapper.toCategoryDtoForEvent(category), user, event.getLocation());
+        List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
+        long numberOfConfirmedRequests = confirmedRequests.size();
+        String eventId = event.getId().toString();
+        HitDto[] hits = webClient
+                .get()
+                .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=/events/{eventId}&unique=false", eventId)
+                .retrieve().bodyToMono(HitDto[].class)
+                .block();
+        long numberOfViews;
+        if (hits != null) {
+            numberOfViews = hits.length;
+        } else {
+            numberOfViews = 0;
+        }
+        return EventMapper.toEventFullDto(event, CategoryMapper.toCategoryDtoForEvent(category), user, new Location(event.getLat(), event.getLon()), numberOfConfirmedRequests, numberOfViews);
     }
 }

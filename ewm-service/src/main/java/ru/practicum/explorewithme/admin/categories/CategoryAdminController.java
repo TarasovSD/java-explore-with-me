@@ -1,36 +1,34 @@
 package ru.practicum.explorewithme.admin.categories;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.explorewithme.dto.CategoryDto;
 import ru.practicum.explorewithme.service.category.CategoryService;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping(path = "/admin/categories")
 @Slf4j
 public class CategoryAdminController {
 
     private final CategoryService categoryService;
 
-    public CategoryAdminController(CategoryService categoryService) {
-        this.categoryService = categoryService;
-    }
-
     @PostMapping()
-    public CategoryDto createCategory(@RequestBody CategoryDto categoryDto) {
+    public CategoryDto create(@RequestBody CategoryDto categoryDto) {
         log.info("Категория создана");
-        return categoryService.createCategory(categoryDto);
+        return categoryService.create(categoryDto);
     }
 
     @PatchMapping()
-    public CategoryDto updateCategory(@RequestBody CategoryDto categoryDto) {
+    public CategoryDto update(@RequestBody CategoryDto categoryDto) {
         log.info("Категория id {} с обновлена", categoryDto.getId());
-        return categoryService.updateCategory(categoryDto);
+        return categoryService.update(categoryDto);
     }
 
     @DeleteMapping("/{id}")
-    public void removeUserById(@PathVariable Long id) {
-        log.info("Запрос на удаление категории с ID:" + id);
-        categoryService.removeUserById(id);
+    public void removeById(@PathVariable Long id) {
+        log.info("Запрос на удаление категории с ID {}", id);
+        categoryService.removeById(id);
     }
 }

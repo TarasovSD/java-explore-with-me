@@ -1,6 +1,7 @@
 package ru.practicum.explorewithme.priv.events;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -23,14 +24,14 @@ public class EventPrivateController {
 
     private final WebClient webClient;
 
-    public EventPrivateController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+    public EventPrivateController(@Value("${base.path}") String basePath, WebClient.Builder builder) {
+        webClient = builder.baseUrl(basePath).build();
     }
 
     @PostMapping("/{userId}/events")
-    public EventFullDto createEvent(@Validated(Create.class) @RequestBody EventDto eventDto,
-                                    @PositiveOrZero @PathVariable Long userId) {
-        log.info("Создание нового события пользователем с ID: " + userId);
+    public EventFullDto create(@Validated(Create.class) @RequestBody EventDto eventDto,
+                               @PositiveOrZero @PathVariable Long userId) {
+        log.info("Создание нового события пользователем с ID {}", userId);
         return webClient
                 .post()
                 .uri("/users/{id}/events", userId)
@@ -41,10 +42,10 @@ public class EventPrivateController {
     }
 
     @GetMapping("/{userId}/events")
-    public EventFullDto[] getEventsByUserId(@PositiveOrZero @PathVariable Long userId,
-                                            @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
-                                            @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
-        log.info("Запрос событий пользователем с ID: " + userId);
+    public EventFullDto[] getByUserId(@PositiveOrZero @PathVariable Long userId,
+                                      @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
+                                      @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
+        log.info("Запрос событий пользователем с ID {}", userId);
         return webClient
                 .get()
                 .uri("/users/{userId}/events?from={from}&size={size}", userId, from, size)
@@ -54,9 +55,9 @@ public class EventPrivateController {
     }
 
     @PatchMapping("/{userId}/events")
-    public EventFullDto updateEvent(@Validated(Update.class) @RequestBody EventUpdateDto eventDto,
-                                    @PositiveOrZero @PathVariable Long userId) {
-        log.info("Обновление события пользователем с ID: " + userId);
+    public EventFullDto update(@Validated(Update.class) @RequestBody EventUpdateDto eventDto,
+                               @PositiveOrZero @PathVariable Long userId) {
+        log.info("Обновление события пользователем с ID {}", userId);
         return webClient
                 .patch()
                 .uri("/users/{id}/events", userId)
@@ -67,8 +68,8 @@ public class EventPrivateController {
     }
 
     @GetMapping("/{userId}/events/{eventId}")
-    public EventFullDto getEventById(@PositiveOrZero @PathVariable Long userId,
-                                     @PositiveOrZero @PathVariable Long eventId) {
+    public EventFullDto getById(@PositiveOrZero @PathVariable Long userId,
+                                @PositiveOrZero @PathVariable Long eventId) {
         log.info("Запрос события с ID {} пользователем с ID {}", eventId, userId);
         return webClient
                 .get()
@@ -79,8 +80,8 @@ public class EventPrivateController {
     }
 
     @PatchMapping("/{userId}/events/{eventId}")
-    public EventFullDto cancelEvent(@PositiveOrZero @PathVariable Long userId,
-                                    @PositiveOrZero @PathVariable Long eventId) {
+    public EventFullDto cancel(@PositiveOrZero @PathVariable Long userId,
+                               @PositiveOrZero @PathVariable Long eventId) {
         log.info("Отмена события с ID {} пользователем с ID {}", eventId, userId);
         return webClient
                 .patch()

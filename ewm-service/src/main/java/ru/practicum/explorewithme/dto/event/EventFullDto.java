@@ -35,8 +35,8 @@ public class EventFullDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class LocationDtoForEvent {
-        private Float lat;
-        private Float lon;
+        private float lat;
+        private float lon;
     }
 
     @Getter

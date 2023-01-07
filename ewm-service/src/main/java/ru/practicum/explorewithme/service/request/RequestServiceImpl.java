@@ -20,7 +20,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 @Slf4j
@@ -40,36 +39,18 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     @Transactional
-    public RequestDto createRequest(Long userId, Long eventId) {
+    public RequestDto create(Long userId, Long eventId) {
         LocalDateTime created = LocalDateTime.now();
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        Event event;
-        if (eventOpt.isPresent()) {
-            event = eventOpt.get();
-        } else {
-            throw new EventNotFoundException("Событие не найдено");
-        }
-        Optional<User> userOpt = userRepository.findById(userId);
-        User user;
-        if (userOpt.isPresent()) {
-            user = userOpt.get();
-        } else {
-            throw new UserNotFoundException("Пользователь не найден");
-        }
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
+        User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         Request requestForSave = new Request(1L, created, event, user, Status.PENDING);
         return RequestMapper.toRequestDto(requestRepository.save(requestForSave));
     }
 
     @Override
-    public List<RequestDto> getRequestsByUserId(Long userId) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        User user;
-        if (userOpt.isPresent()) {
-            user = userOpt.get();
-        } else {
-            throw new UserNotFoundException("Пользователь не найден");
-        }
-        List<Request> requests = requestRepository.findAllByRequester(user);
+    public List<RequestDto> getByUserId(Long userId) {
+        User foundUser = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        List<Request> requests = requestRepository.findAllByRequester(foundUser);
         List<RequestDto> requestsDto = new ArrayList<>();
         for (Request request : requests) {
             requestsDto.add(RequestMapper.toRequestDto(request));
@@ -78,27 +59,16 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
-    public RequestDto cancelRequest(Long userId, Long requestId) {
-        Request request;
-        Optional<Request> requestOpt = requestRepository.findById(requestId);
-        if (requestOpt.isPresent()) {
-            request = requestOpt.get();
-        } else {
-            throw new RequestNotFoundException("Запрос не найден");
-        }
+    @Transactional
+    public RequestDto cancel(Long userId, Long requestId) {
+        Request request = requestRepository.findById(requestId).orElseThrow(() -> new RequestNotFoundException("Запрос не найден"));
         request.setStatus(Status.CANCELED);
-        return RequestMapper.toRequestDto(requestRepository.save(request));
+        return RequestMapper.toRequestDto(request);
     }
 
     @Override
     public List<RequestDto> getRequestByEventIdAndUserId(Long userId, Long eventId) {
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        Event event;
-        if (eventOpt.isPresent()) {
-            event = eventOpt.get();
-        } else {
-            throw new EventNotFoundException("Событие не найдено");
-        }
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
         List<Request> requests = requestRepository.findAllByEvent(event);
         List<RequestDto> requestsDto = new ArrayList<>();
         for (Request request : requests) {

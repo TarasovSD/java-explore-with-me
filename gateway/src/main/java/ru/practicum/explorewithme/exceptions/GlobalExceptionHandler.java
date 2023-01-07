@@ -13,7 +13,7 @@ import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 @Slf4j
-public class GlobalExceptionHandler extends RuntimeException {
+public class GlobalExceptionHandler {
 
     @ExceptionHandler
     public ResponseEntity<ErrorDto> handleThrowable(final Throwable e) {
@@ -31,14 +31,14 @@ public class GlobalExceptionHandler extends RuntimeException {
     @ExceptionHandler
     public ResponseEntity<ErrorDto> handleWebClientResponseException(final WebClientResponseException e) {
         log.info(e.getMessage());
-        ErrorDto errorDto = new ErrorDto(e.getStatusCode(), getMessage());
+        ErrorDto errorDto = new ErrorDto(e.getStatusCode(), e.getMessage());
         return new ResponseEntity<>(errorDto, e.getStatusCode());
     }
 
     @ExceptionHandler
     public ResponseEntity<ErrorDto> handleDataIntegrityViolationException(final DataIntegrityViolationException e) {
         log.info(e.getMessage());
-        ErrorDto errorDto = new ErrorDto(HttpStatus.CONFLICT, getMessage());
+        ErrorDto errorDto = new ErrorDto(HttpStatus.CONFLICT, e.getMessage());
         return new ResponseEntity<>(errorDto, HttpStatus.CONFLICT);
     }
 

@@ -1,5 +1,6 @@
 package ru.practicum.explorewithme.admin.compilations;
 
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -19,12 +20,12 @@ public class CompilationAdminController {
 
     private final WebClient webClient;
 
-    public CompilationAdminController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+    public CompilationAdminController(@Value("${base.path}") String basePath, WebClient.Builder builder) {
+        webClient = builder.baseUrl(basePath).build();
     }
 
     @PostMapping()
-    public CompilationFullDto createCompilation(@Validated(Create.class) @RequestBody CompilationDto compilationDto) {
+    public CompilationFullDto create(@Validated(Create.class) @RequestBody CompilationDto compilationDto) {
         log.info("Создание новой подборки");
         return webClient
                 .post()
@@ -36,7 +37,7 @@ public class CompilationAdminController {
     }
 
     @DeleteMapping("/{compId}")
-    public String removeCompilationById(@PositiveOrZero @PathVariable Long compId) {
+    public String removeById(@PositiveOrZero @PathVariable Long compId) {
         log.info("Удаление подборки");
         return webClient
                 .delete()
@@ -47,8 +48,8 @@ public class CompilationAdminController {
     }
 
     @PatchMapping("/{compId}/events/{eventId}")
-    public String addEventToCompilation(@PositiveOrZero @PathVariable Long compId,
-                                        @PositiveOrZero @PathVariable Long eventId) {
+    public String addToCompilation(@PositiveOrZero @PathVariable Long compId,
+                                   @PositiveOrZero @PathVariable Long eventId) {
         log.info("Добавление события с ID {} в подборку с ID {}", eventId, compId);
         return webClient
                 .patch()
@@ -59,7 +60,7 @@ public class CompilationAdminController {
     }
 
     @PatchMapping("/{compId}/pin")
-    public String pinCompilation(@PositiveOrZero @PathVariable Long compId) {
+    public String pin(@PositiveOrZero @PathVariable Long compId) {
         log.info("Закрепление  на главной странице подборки с ID {}", compId);
         return webClient
                 .patch()
@@ -70,8 +71,8 @@ public class CompilationAdminController {
     }
 
     @DeleteMapping("/{compId}/events/{eventId}")
-    public String removeEventFromCompilation(@PositiveOrZero @PathVariable Long compId,
-                                             @PositiveOrZero @PathVariable Long eventId) {
+    public String removeFromCompilation(@PositiveOrZero @PathVariable Long compId,
+                                        @PositiveOrZero @PathVariable Long eventId) {
         log.info("Удаление события с ID {} из подборки с ID {}", eventId, compId);
         return webClient
                 .delete()
@@ -82,7 +83,7 @@ public class CompilationAdminController {
     }
 
     @DeleteMapping("/{compId}/pin")
-    public String unpinCompilation(@PositiveOrZero @PathVariable Long compId) {
+    public String unpin(@PositiveOrZero @PathVariable Long compId) {
         log.info("Открепление от главной страницы подборки с ID {}", compId);
         return webClient
                 .delete()

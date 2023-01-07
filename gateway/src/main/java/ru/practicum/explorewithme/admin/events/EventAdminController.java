@@ -1,6 +1,7 @@
 package ru.practicum.explorewithme.admin.events;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,13 +22,13 @@ public class EventAdminController {
 
     private final WebClient webClient;
 
-    public EventAdminController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+    public EventAdminController(@Value("${base.path}") String basePath, WebClient.Builder builder) {
+        webClient = builder.baseUrl(basePath).build();
     }
 
     @PatchMapping("/{eventId}/publish")
-    public EventFullDto publishEvent(@PositiveOrZero @PathVariable Long eventId) {
-        log.info("Публикация события с ID: " + eventId);
+    public EventFullDto publish(@PositiveOrZero @PathVariable Long eventId) {
+        log.info("Публикация события с ID {}", eventId);
         return webClient
                 .patch()
                 .uri("/admin/events/{eventId}/publish", eventId)
@@ -37,8 +38,8 @@ public class EventAdminController {
     }
 
     @PatchMapping("/{eventId}/reject")
-    public EventFullDto rejectEvent(@PositiveOrZero @PathVariable Long eventId) {
-        log.info("Отклонение события с ID: " + eventId);
+    public EventFullDto reject(@PositiveOrZero @PathVariable Long eventId) {
+        log.info("Отклонение события с ID {}", eventId);
         return webClient
                 .patch()
                 .uri("/admin/events/{eventId}/reject", eventId)
@@ -48,13 +49,13 @@ public class EventAdminController {
     }
 
     @GetMapping()
-    public EventFullDto[] getEvents(@RequestParam(defaultValue = "") List<Long> users,
-                                    @RequestParam(defaultValue = "") List<String> states,
-                                    @RequestParam(defaultValue = "") List<Long> categories,
-                                    @RequestParam(defaultValue = "") String rangeStart,
-                                    @RequestParam(defaultValue = "") String rangeEnd,
-                                    @RequestParam(defaultValue = "0") Long from,
-                                    @RequestParam(defaultValue = "10") Long size) {
+    public EventFullDto[] get(@RequestParam(defaultValue = "") List<Long> users,
+                              @RequestParam(defaultValue = "") List<String> states,
+                              @RequestParam(defaultValue = "") List<Long> categories,
+                              @RequestParam(defaultValue = "") String rangeStart,
+                              @RequestParam(defaultValue = "") String rangeEnd,
+                              @RequestParam(defaultValue = "0") Integer from,
+                              @RequestParam(defaultValue = "10") Integer size) {
         log.info("Запрос всех событий");
         String usersStr;
         String statesStr;
@@ -84,9 +85,9 @@ public class EventAdminController {
     }
 
     @PutMapping("/{eventId}")
-    public EventFullDto redactEvent(@Validated(Update.class) @RequestBody EventDto eventDto,
-                                    @PositiveOrZero @PathVariable Long eventId) {
-        log.info("Редактирование события с ID: " + eventId);
+    public EventFullDto redact(@Validated(Update.class) @RequestBody EventDto eventDto,
+                               @PositiveOrZero @PathVariable Long eventId) {
+        log.info("Редактирование события с ID {}", eventId);
         return webClient
                 .put()
                 .uri("/admin/events/{eventId}", eventId)

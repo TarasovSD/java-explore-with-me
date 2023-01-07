@@ -1,19 +1,17 @@
 package ru.practicum.explorewithme.service.user;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.explorewithme.dto.UserDto;
-import ru.practicum.explorewithme.exceptions.UserNameAlreadyExistException;
 import ru.practicum.explorewithme.exceptions.UserNotFoundException;
 import ru.practicum.explorewithme.mapper.UserMapper;
 import ru.practicum.explorewithme.model.User;
-import ru.practicum.explorewithme.repository.EventRepository;
 import ru.practicum.explorewithme.repository.UserRepository;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -21,43 +19,34 @@ import java.util.Optional;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final EventRepository eventRepository;
 
-    public UserServiceImpl(UserRepository userRepository, EventRepository eventRepository) {
+    public UserServiceImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.eventRepository = eventRepository;
     }
 
 
     @Override
-    public List<UserDto> findUsers() {
-        List<User> users = userRepository.findAll();
-        List<UserDto> userDtos = new ArrayList<>();
-        for (User u : users) {
-            userDtos.add(UserMapper.toUserDto(u));
+    public List<UserDto> find(List<Long> ids, PageRequest pageRequest) {
+        List<UserDto> userDtos;
+        if (ids == null || ids.isEmpty()) {
+            userDtos = userRepository.findAll(pageRequest).stream().map(UserMapper::toUserDto).collect(Collectors.toList());
+        } else {
+            userDtos = userRepository.getUsersById(ids, pageRequest).stream().map(UserMapper::toUserDto).collect(Collectors.toList());
         }
         return userDtos;
     }
 
     @Override
     @Transactional
-    public UserDto createUser(UserDto userDto) {
-        User user = UserMapper.toUser(userDto, 1L);
-        Optional<User> foundUserOpt = userRepository.findByName(userDto.getName());
-        if (foundUserOpt.isPresent()) {
-            throw new UserNameAlreadyExistException("Имя пользователя уже существует");
-        }
-        user.setEvents(eventRepository.findEventsByInitiatorId(user));
+    public UserDto create(UserDto userDto) {
+        User user = UserMapper.toUser(userDto);
         return UserMapper.toUserDto(userRepository.save(user));
     }
 
     @Override
     @Transactional
-    public void removeUserById(Long id) {
-        User userToRemove = userRepository.findById(id).get();
-        if (userRepository.findById(id).isEmpty()) {
-            throw new UserNotFoundException("Пользователь не найден");
-        }
-        userRepository.delete(userToRemove);
+    public void removeById(Long id) {
+        User userForDelete = userRepository.findById(id).orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        userRepository.delete(userForDelete);
     }
 }

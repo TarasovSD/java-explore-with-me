@@ -20,18 +20,18 @@ public class CompilationPublicController {
     }
 
     @GetMapping("/{compId}")
-    public CompilationFullDto getCompilationById(@PathVariable Long compId) {
-        log.info("Запрос информации о подборке с ID:" + compId);
-        return compilationService.getCompilationById(compId);
+    public CompilationFullDto getById(@PathVariable Long compId) {
+        log.info("Запрос информации о подборке с ID {}", compId);
+        return compilationService.getById(compId);
     }
 
     @GetMapping()
-    public List<CompilationFullDto> getCompilations(@RequestParam Boolean pinned,
-                                                    @RequestParam Integer from,
-                                                    @RequestParam Integer size) {
-        log.info("Запрос подборок. Параметр pinned: " + pinned);
+    public List<CompilationFullDto> get(@RequestParam(required = false) Boolean pinned,
+                                        @RequestParam Integer from,
+                                        @RequestParam Integer size) {
+        log.info("Запрос подборок. Параметр pinned: {}", pinned);
         int page = from / size;
         final PageRequest pageRequest = PageRequest.of(page, size);
-        return compilationService.getCompilations(pinned, pageRequest);
+        return compilationService.get(pinned, pageRequest);
     }
 }

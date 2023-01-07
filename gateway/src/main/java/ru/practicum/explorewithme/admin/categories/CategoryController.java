@@ -1,6 +1,7 @@
 package ru.practicum.explorewithme.admin.categories;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -12,17 +13,16 @@ import ru.practicum.explorewithme.dto.CategoryDto;
 @RestController
 @RequestMapping("/admin/categories")
 @Slf4j
-@Validated
 public class CategoryController {
 
     private final WebClient webClient;
 
-    public CategoryController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+    public CategoryController(@Value("${base.path}") String basePath, WebClient.Builder builder) {
+        webClient = builder.baseUrl(basePath).build();
     }
 
     @PostMapping()
-    public CategoryDto createCategory(@Validated(Create.class) @RequestBody CategoryDto categoryDto) {
+    public CategoryDto create(@Validated(Create.class) @RequestBody CategoryDto categoryDto) {
         log.info("Создание новой категории");
         return webClient
                 .post()
@@ -34,7 +34,7 @@ public class CategoryController {
     }
 
     @PatchMapping()
-    public CategoryDto updateCategory(@Validated(Update.class) @RequestBody CategoryDto categoryDto) {
+    public CategoryDto update(@Validated(Update.class) @RequestBody CategoryDto categoryDto) {
         log.info("Обновление категории");
         return webClient
                 .patch()
@@ -46,8 +46,8 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public String removeCategoryById(@PathVariable Long id) {
-        log.info("Удаление пользователя");
+    public String removeById(@PathVariable Long id) {
+        log.info("Удаление категории");
         return webClient
                 .delete()
                 .uri("/admin/categories/" + id)

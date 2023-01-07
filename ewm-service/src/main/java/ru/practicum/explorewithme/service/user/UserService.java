@@ -1,13 +1,14 @@
 package ru.practicum.explorewithme.service.user;
 
+import org.springframework.data.domain.PageRequest;
 import ru.practicum.explorewithme.dto.UserDto;
 
 import java.util.List;
 
 public interface UserService {
-    List<UserDto> findUsers();
+    List<UserDto> find(List<Long> ids, PageRequest pageRequest);
 
-    UserDto createUser(UserDto userDto);
+    UserDto create(UserDto userDto);
 
-    void removeUserById(Long id);
+    void removeById(Long id);
 }

@@ -6,8 +6,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import ru.practicum.explorewithme.Create;
 
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -15,11 +16,10 @@ import java.util.List;
 @NoArgsConstructor
 public class CompilationDto {
     private Long id;
-    @NotNull(groups = {Create.class})
-    private List<Long> events;
+    private Set<Long> events;
     @NotNull(groups = {Create.class})
     private Boolean pinned;
-    @NotNull(groups = {Create.class})
+    @NotBlank(groups = {Create.class})
     private String title;
 
 }

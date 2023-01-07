@@ -1,6 +1,7 @@
 package ru.practicum.explorewithme.priv.requests;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -16,13 +17,13 @@ public class RequestPrivateController {
 
     private final WebClient webClient;
 
-    public RequestPrivateController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+    public RequestPrivateController(@Value("${base.path}") String basePath, WebClient.Builder builder) {
+        webClient = builder.baseUrl(basePath).build();
     }
 
     @PostMapping("/{userId}/requests")
-    public RequestDto createRequest(@PositiveOrZero @PathVariable Long userId,
-                                    @PositiveOrZero @RequestParam Long eventId) {
+    public RequestDto create(@PositiveOrZero @PathVariable Long userId,
+                             @PositiveOrZero @RequestParam Long eventId) {
         log.info("Создание запроса на участие в событии с ID {} пользователем с ID {}", eventId, userId);
         return webClient
                 .post()
@@ -33,8 +34,8 @@ public class RequestPrivateController {
     }
 
     @GetMapping("/{userId}/requests")
-    public RequestDto[] getRequestsByUserId(@PositiveOrZero @PathVariable Long userId) {
-        log.info("Запрос информации о запросах на участие в событиях пользователем с ID: " + userId);
+    public RequestDto[] getByUserId(@PositiveOrZero @PathVariable Long userId) {
+        log.info("Запрос информации о запросах на участие в событиях пользователем с ID {}", userId);
         return webClient
                 .get()
                 .uri("/users/{userId}/requests", userId)
@@ -44,8 +45,8 @@ public class RequestPrivateController {
     }
 
     @PatchMapping("/{userId}/requests/{requestId}/cancel")
-    public RequestDto cancelRequest(@PositiveOrZero @PathVariable Long userId,
-                                    @PositiveOrZero @PathVariable Long requestId) {
+    public RequestDto cancel(@PositiveOrZero @PathVariable Long userId,
+                             @PositiveOrZero @PathVariable Long requestId) {
         log.info("Отмена запроса на участие в событии с ID {} пользователем с ID {}", requestId, userId);
         return webClient
                 .patch()

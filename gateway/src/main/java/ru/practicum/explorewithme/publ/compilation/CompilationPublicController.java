@@ -1,6 +1,7 @@
 package ru.practicum.explorewithme.publ.compilation;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -14,13 +15,13 @@ public class CompilationPublicController {
 
     private final WebClient webClient;
 
-    public CompilationPublicController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+    public CompilationPublicController(@Value("${base.path}") String basePath, WebClient.Builder builder) {
+        webClient = builder.baseUrl(basePath).build();
     }
 
     @GetMapping("/{compId}")
-    public CompilationFullDto getCompilationById(@PathVariable Long compId) {
-        log.info("Запрос подборки с ID: " + compId);
+    public CompilationFullDto getById(@PathVariable Long compId) {
+        log.info("Запрос подборки с ID {}", compId);
         return webClient
                 .get()
                 .uri("/compilations/{compId}", compId)
@@ -30,9 +31,9 @@ public class CompilationPublicController {
     }
 
     @GetMapping()
-    public CompilationFullDto[] getCompilations(@RequestParam(defaultValue = "false") Boolean pinned,
-                                                @RequestParam(defaultValue = "0") Integer from,
-                                                @RequestParam(defaultValue = "10") Integer size) {
+    public CompilationFullDto[] get(@RequestParam(required = false) Boolean pinned,
+                                    @RequestParam(defaultValue = "0") Integer from,
+                                    @RequestParam(defaultValue = "10") Integer size) {
         log.info("Запрос подборок");
         return webClient
                 .get()

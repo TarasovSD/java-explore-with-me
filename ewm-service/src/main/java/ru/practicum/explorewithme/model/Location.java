@@ -11,15 +11,8 @@ import javax.persistence.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "locations")
-@Entity
+@Embeddable
 public class Location {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    Long id;
-    @Column(name = "lat")
-    Float lat;
-    @Column(name = "lon")
-    Float lon;
+    private float lat;
+    private float lon;
 }

@@ -1,6 +1,9 @@
 package ru.practicum.explorewithme.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -14,5 +17,6 @@ public class HitDto {
     private String app;
     private String uri;
     private String ip;
-    private String timestamp;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime timestamp;
 }

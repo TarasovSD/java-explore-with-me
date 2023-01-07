@@ -6,11 +6,11 @@ import java.util.List;
 
 public interface RequestService {
 
-    RequestDto createRequest(Long userId, Long eventId);
+    RequestDto create(Long userId, Long eventId);
 
-    List<RequestDto> getRequestsByUserId(Long userId);
+    List<RequestDto> getByUserId(Long userId);
 
-    RequestDto cancelRequest(Long userId, Long requestId);
+    RequestDto cancel(Long userId, Long requestId);
 
     List<RequestDto> getRequestByEventIdAndUserId(Long userId, Long eventId);
 }

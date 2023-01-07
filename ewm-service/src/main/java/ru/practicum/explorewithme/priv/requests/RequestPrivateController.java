@@ -19,20 +19,20 @@ public class RequestPrivateController {
     }
 
     @PostMapping("/{userId}/requests")
-    public RequestDto createRequest(@PathVariable Long userId, @RequestParam Long eventId) {
+    public RequestDto create(@PathVariable Long userId, @RequestParam Long eventId) {
         log.info("Запрос на участие в событии с ID {} пользователем с ID {} создан", userId, eventId);
-        return requestService.createRequest(userId, eventId);
+        return requestService.create(userId, eventId);
     }
 
     @GetMapping("/{userId}/requests")
-    public List<RequestDto> getRequestsByUserId(@PathVariable Long userId) {
+    public List<RequestDto> getByUserId(@PathVariable Long userId) {
         log.info("Запрос пользователем с ID {} информации о запросах на участие в событиях", userId);
-        return requestService.getRequestsByUserId(userId);
+        return requestService.getByUserId(userId);
     }
 
     @PatchMapping("/{userId}/requests/{requestId}/cancel")
-    public RequestDto cancelUser(@PathVariable Long userId, @PathVariable Long requestId) {
+    public RequestDto cancel(@PathVariable Long userId, @PathVariable Long requestId) {
         log.info("Отмена запроса с ID {} на участие в событии пользователем с ID {} создан", requestId, userId);
-        return requestService.cancelRequest(userId, requestId);
+        return requestService.cancel(userId, requestId);
     }
 }

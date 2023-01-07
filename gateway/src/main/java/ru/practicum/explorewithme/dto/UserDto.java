@@ -22,5 +22,6 @@ public class UserDto {
     private String name;
 
     @Email(groups = {Create.class, Update.class})
+    @NotBlank(groups = {Create.class, Update.class})
     private String email;
 }

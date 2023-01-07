@@ -10,7 +10,6 @@ import ru.practicum.explorewithme.dto.ViewStatsDto;
 import ru.practicum.explorewithme.model.Hit;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,23 +25,19 @@ public class HitServiceImpl implements HitService {
     }
 
     @Override
-    public HitDto createHit(HitDto hitDto) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime timestamp = LocalDateTime.parse(hitDto.getTimestamp(), formatter);
+    public HitDto create(HitDto hitDto) {
+        LocalDateTime timestamp = hitDto.getTimestamp();
         Hit hitToSave = HitMapper.toHit(hitDto, timestamp);
         return HitMapper.toHitDto(hitRepository.save(hitToSave));
     }
 
     @Override
-    public List<ViewStatsDto> getHits(String start, String end, List<String> uris, Boolean unique) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime startTime = LocalDateTime.parse(start, formatter);
-        LocalDateTime endTime = LocalDateTime.parse(end, formatter);
+    public List<ViewStatsDto> get(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
         List<HitDto> statsDtoList = new ArrayList<>();
         List<String> ipList = new ArrayList<>();
         List<String> uriList = new ArrayList<>();
         if (uris.isEmpty()) {
-            List<Hit> hits = hitRepository.getHits(startTime, endTime);
+            List<Hit> hits = hitRepository.getHits(start, end);
             if (unique) {
                 for (Hit hit : hits) {
                     if (!ipList.contains(hit.getIp())) {
@@ -59,7 +54,7 @@ public class HitServiceImpl implements HitService {
                 }
             }
         } else {
-            List<Hit> hits = hitRepository.getHitsForUris(startTime, endTime, uris);
+            List<Hit> hits = hitRepository.getHitsForUris(start, end, uris);
             if (unique) {
                 for (Hit hit : hits) {
                     if (!ipList.contains(hit.getIp())) {
@@ -77,10 +72,17 @@ public class HitServiceImpl implements HitService {
             }
         }
         List<ViewStatsDto> viewStatsDtoList = new ArrayList<>();
+        List<Hit> hits = hitRepository.findAllByUris(uris);
         for (String uri : uriList) {
-            List<Hit> hits = hitRepository.findAllByUri(uri);
-            Long hitsSize = (long) hits.size();
-            ViewStatsDto viewStatsDto = new ViewStatsDto("ewm-service", uri, hitsSize);
+            List<Hit> hitsCount = new ArrayList<>();
+            for (Hit hit : hits) {
+                if (hit.getUri().equals(uri)) {
+                    hitsCount.add(hit);
+                }
+            }
+            Long hitsSize = (long) hitsCount.size();
+            String appName = hitsCount.get(0).getApp();
+            ViewStatsDto viewStatsDto = new ViewStatsDto(appName, uri, hitsSize);
             viewStatsDtoList.add(viewStatsDto);
         }
         return viewStatsDtoList;

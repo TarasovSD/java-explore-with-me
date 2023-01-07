@@ -9,19 +9,19 @@ import java.util.List;
 public interface CompilationService {
 
 
-    CompilationFullDto createCompilation(CompilationDto compilationDto);
+    CompilationFullDto create(CompilationDto compilationDto);
 
-    void removeCompilationById(Long compId);
+    void removeById(Long compId);
 
-    CompilationFullDto getCompilationById(Long compId);
+    CompilationFullDto getById(Long compId);
 
-    List<CompilationFullDto> getCompilations(Boolean pinned, PageRequest pageRequest);
+    List<CompilationFullDto> get(Boolean pinned, PageRequest pageRequest);
 
-    void addEventToCompilation(Long eventId, Long compId);
+    void addEvent(Long eventId, Long compId);
 
-    void pinCompilation(Long compId);
+    void pin(Long compId);
 
-    void removeEventFromCompilation(Long eventId, Long compId);
+    void removeEvent(Long eventId, Long compId);
 
-    void unpinCompilation(Long compId);
+    void unpin(Long compId);
 }

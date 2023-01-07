@@ -1,18 +1,19 @@
 package ru.practicum.explorewithme.service.category;
 
+import org.springframework.data.domain.PageRequest;
 import ru.practicum.explorewithme.dto.CategoryDto;
 
 import java.util.List;
 
 public interface CategoryService {
-    CategoryDto createCategory(CategoryDto categoryDto);
+    CategoryDto create(CategoryDto categoryDto);
 
-    CategoryDto updateCategory(CategoryDto categoryDto);
+    CategoryDto update(CategoryDto categoryDto);
 
-    void removeUserById(Long id);
+    void removeById(Long id);
 
-    CategoryDto findCategoryById(Long id);
+    CategoryDto findById(long id);
 
-    List<CategoryDto> findCategories();
+    List<CategoryDto> find(PageRequest pageRequest);
 
 }

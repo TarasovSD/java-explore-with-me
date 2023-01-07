@@ -1,6 +1,7 @@
 package ru.practicum.explorewithme.publ.categories;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -14,13 +15,13 @@ public class CategoryPublicController {
 
     private final WebClient webClient;
 
-    public CategoryPublicController(WebClient.Builder builder) {
-        webClient = builder.baseUrl("http://ewm-service:9098/").build();
+    public CategoryPublicController(@Value("${base.path}") String basePath, WebClient.Builder builder) {
+        webClient = builder.baseUrl(basePath).build();
     }
 
     @GetMapping("/{id}")
-    public CategoryDto getCategoryById(@PathVariable Long id) {
-        log.info("Запрос категории с ID: " + id);
+    public CategoryDto getById(@PathVariable Long id) {
+        log.info("Запрос категории с ID {}", id);
         return webClient
                 .get()
                 .uri("/categories/" + id)
@@ -30,11 +31,12 @@ public class CategoryPublicController {
     }
 
     @GetMapping()
-    public CategoryDto[] getCategories() {
+    public CategoryDto[] get(@RequestParam(defaultValue = "0") Long from,
+                             @RequestParam(defaultValue = "10") Long size) {
         log.info("Запрос всех категорий");
         return webClient
                 .get()
-                .uri("/categories")
+                .uri("/categories?from={from}&size={size}", from, size)
                 .retrieve()
                 .bodyToMono(CategoryDto[].class)
                 .block();

@@ -1,17 +1,19 @@
 package ru.practicum.explorewithme.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
+import javax.validation.constraints.NotBlank;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString
-@EqualsAndHashCode
 @Entity
 @Table(name = "compilations")
 public class Compilation {
@@ -19,17 +21,16 @@ public class Compilation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
-    @Column(name = "pined")
+    @Column(name = "pined", nullable = false)
     private Boolean pinned;
-    @Column(name = "title")
+    @Column(name = "title", length = 1000)
+    @NotBlank
     private String title;
-
-    //    @ManyToMany(mappedBy = "compilations")
     @ManyToMany
     @JoinTable(name = "events_compilations",
             joinColumns = @JoinColumn(name = "compilation_id"),
             inverseJoinColumns = @JoinColumn(name = "event_id"))
-    private List<Event> eventList = new ArrayList<>();
+    private Set<Event> events = new HashSet<>();
 
     public Compilation(Long id, Boolean pinned, String title) {
         this.id = id;
@@ -38,6 +39,6 @@ public class Compilation {
     }
 
     public void addEvent(Event event) {
-        eventList.add(event);
+        events.add(event);
     }
 }

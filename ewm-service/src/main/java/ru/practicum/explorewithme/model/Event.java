@@ -6,9 +6,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -21,56 +22,53 @@ public class Event {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
-    @Column(name = "annotation")
+    @Column(name = "annotation", length = 500)
+    @NotBlank
     private String annotation;
-    @Column(name = "category")
+    @Column(name = "category", nullable = false)
     private Long category;
-    @Column(name = "description")
+    @Column(name = "description", length = 5000)
+    @NotBlank
     private String description;
-    @Column(name = "event_date")
+    @Column(name = "event_date", nullable = false)
     private LocalDateTime eventDate;
-    @ManyToOne
-    @JoinColumn(name = "location_id")
-    private Location location;
-    @Column(name = "confirmed_requests")
-    private Long confirmedRequests;
-    @Column(name = "paid")
+
+    @Column(name = "lat", nullable = false)
+    private Float lat;
+    @Column(name = "lon", nullable = false)
+    private Float lon;
+    @Column(name = "paid", nullable = false)
     private Boolean paid;
-    @Column(name = "participant_limit")
+    @Column(name = "participant_limit", nullable = false)
     private Long participantLimit;
-    @Column(name = "request_moderation")
+    @Column(name = "request_moderation", nullable = false)
     private Boolean requestModeration;
-    @Column(name = "title")
+    @Column(name = "title", length = 2000)
+    @NotBlank
     private String title;
-    @Column(name = "created_on")
+    @Column(name = "created_on", nullable = false)
     private LocalDateTime createdOn;
 
     @ManyToOne
-    @JoinColumn(name = "initiator_id")
+    @JoinColumn(name = "initiator_id", nullable = false)
     private User initiatorId;
     @Column(name = "published_on")
     private LocalDateTime publishedOn;
-    @Column(name = "state")
+    @Column(name = "state", length = 100, nullable = false)
     @Enumerated(EnumType.STRING)
     private Status state;
-    @Column(name = "views")
-    private Long views;
 
+    @ManyToMany (mappedBy = "events")
+    private Set<Compilation> compilations = new HashSet<>();
 
-    @ManyToMany
-    @JoinTable(name = "events_compilations",
-            joinColumns = @JoinColumn(name = "event_id"),
-            inverseJoinColumns = @JoinColumn(name = "compilation_id"))
-    private List<Compilation> compilations = new ArrayList<>();
-
-    public Event(Long id, String annotation, Long category, String description, LocalDateTime eventDate, Location location, Long confirmedRequests, Boolean paid, Long participantLimit, Boolean requestModeration, String title, LocalDateTime createdOn, User initiatorId, LocalDateTime publishedOn, Status state, Long views) {
+    public Event(Long id, String annotation, Long category, String description, LocalDateTime eventDate, Float lat, Float lon, Boolean paid, Long participantLimit, Boolean requestModeration, String title, LocalDateTime createdOn, User initiatorId, LocalDateTime publishedOn, Status state) {
         this.id = id;
         this.annotation = annotation;
         this.category = category;
         this.description = description;
         this.eventDate = eventDate;
-        this.location = location;
-        this.confirmedRequests = confirmedRequests;
+        this.lat = lat;
+        this.lon = lon;
         this.paid = paid;
         this.participantLimit = participantLimit;
         this.requestModeration = requestModeration;
@@ -79,7 +77,6 @@ public class Event {
         this.initiatorId = initiatorId;
         this.publishedOn = publishedOn;
         this.state = state;
-        this.views = views;
     }
 
     public void addCompilation(Compilation compilation) {

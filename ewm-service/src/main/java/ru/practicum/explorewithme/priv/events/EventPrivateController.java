@@ -26,39 +26,39 @@ public class EventPrivateController {
     }
 
     @PostMapping("/{userId}/events")
-    public EventFullDto createEvent(@RequestBody EventDto eventDto, @PathVariable Long userId) {
+    public EventFullDto create(@RequestBody EventDto eventDto, @PathVariable Long userId) {
         log.info("событие создано");
-        return eventService.createEvent(eventDto, userId);
+        return eventService.create(eventDto, userId);
     }
 
     @GetMapping("/{userId}/events")
-    public List<EventFullDto> getEventsByUserId(@PathVariable Long userId,
-                                                @RequestParam(name = "from") Integer from,
-                                                @RequestParam(name = "size") Integer size) {
-        log.info("запрос событий пользователя с ID: " + userId);
+    public List<EventFullDto> getByUserId(@PathVariable Long userId,
+                                          @RequestParam(name = "from") Integer from,
+                                          @RequestParam(name = "size") Integer size) {
+        log.info("запрос событий пользователя с ID {}", userId);
         int page = from / size;
         final PageRequest pageRequest = PageRequest.of(page, size);
-        return eventService.getEventsByUserId(userId, pageRequest);
+        return eventService.getByUserId(userId, pageRequest);
     }
 
     @PatchMapping("/{userId}/events")
-    public EventFullDto updateEvent(@RequestBody EventUpdateDto eventDto, @PathVariable Long userId) {
+    public EventFullDto update(@RequestBody EventUpdateDto eventDto, @PathVariable Long userId) {
         log.info("событие c ID {} обновлено", eventDto.getEventId());
-        return eventService.updateEvent(eventDto, userId);
+        return eventService.update(eventDto, userId);
     }
 
     @GetMapping("/{userId}/events/{eventId}")
-    public EventFullDto getEventByIdByUser(@PathVariable Long userId,
+    public EventFullDto getByIdByUser(@PathVariable Long userId,
                                            @PathVariable Long eventId) {
         log.info("запрос события с ID {} пользователем с ID {}", eventId, userId);
-        return eventService.getEventByIdByUser(userId, eventId);
+        return eventService.getByIdByUser(userId, eventId);
     }
 
     @PatchMapping("/{userId}/events/{eventId}")
-    public EventFullDto cancelEvent(@PathVariable Long userId,
+    public EventFullDto cancel(@PathVariable Long userId,
                                     @PathVariable Long eventId) {
         log.info("событие c ID {} отменено пользователем с ID {}", eventId, userId);
-        return eventService.cancelEvent(eventId, userId);
+        return eventService.cancel(eventId, userId);
     }
 
     @GetMapping("/{userId}/events/{eventId}/requests")
@@ -73,8 +73,7 @@ public class EventPrivateController {
                                     @PathVariable Long eventId,
                                     @PathVariable Long reqId) {
         log.info("Заявка с ID {} на участие в событии c ID {} пользователя с ID {} отклонена", reqId, eventId, userId);
-        Boolean isConfirm = false;
-        return eventService.rejectOrConfirmRequest(eventId, userId, reqId, isConfirm);
+        return eventService.rejectRequest(eventId, userId, reqId);
     }
 
     @PatchMapping("/{userId}/events/{eventId}/requests/{reqId}/confirm")
@@ -82,7 +81,6 @@ public class EventPrivateController {
                                      @PathVariable Long eventId,
                                      @PathVariable Long reqId) {
         log.info("Заявка с ID {} на участие в событии c ID {} пользователя с ID {} подтверждена", reqId, eventId, userId);
-        Boolean isConfirm = true;
-        return eventService.rejectOrConfirmRequest(eventId, userId, reqId, isConfirm);
+        return eventService.confirmRequest(eventId, userId, reqId);
     }
 }

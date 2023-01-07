@@ -1,18 +1,18 @@
 package ru.practicum.explorewithme.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.persistence.*;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
-import java.util.List;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@ToString
-@EqualsAndHashCode
 @Entity
 @Table(name = "users")
 public class User {
@@ -22,22 +22,10 @@ public class User {
     @Column(name = "id")
     private Long id;
     @NotBlank
-    @Column(name = "name")
+    @Column(name = "name", length = 100)
     private String name;
     @Email
-    @Column(name = "email")
+    @NotBlank
+    @Column(name = "email", length = 200)
     private String email;
-
-    @OneToMany(mappedBy = "id", orphanRemoval = true, cascade = CascadeType.ALL)
-    private List<Event> events;
-
-    public User(Long id, String name, String email) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-    }
-
-    public void addEvent(Event event) {
-        events.add(event);
-    }
 }

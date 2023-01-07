@@ -28,11 +28,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     List<Event> getEventsByFilterSortByEventDate(List<Long> categories, List<Boolean> paid, LocalDateTime rangeStart,
                                                  LocalDateTime rangeEnd, PageRequest pageRequest);
 
-    @Query("select e from Event e where  e.category in :categories and e.paid = :paid " +
-            "and e.eventDate > :rangeStart and e.eventDate < :rangeEnd order by e.views desc")
-    List<Event> getEventsByFilterSortByViews(List<Long> categories, List<Boolean> paid, LocalDateTime rangeStart,
-                                             LocalDateTime rangeEnd, PageRequest pageRequest);
-
     @Query("select e from Event e where  e.category in :categories and e.paid in :paid " +
             "and e.eventDate > :rangeStart and e.eventDate < :rangeEnd")
     List<Event> getEventsByFilterWithoutSort(List<Long> categories, List<Boolean> paid, LocalDateTime rangeStart,

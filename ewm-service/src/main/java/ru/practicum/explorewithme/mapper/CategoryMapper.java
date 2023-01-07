@@ -1,15 +1,17 @@
 package ru.practicum.explorewithme.mapper;
 
+import lombok.experimental.UtilityClass;
 import ru.practicum.explorewithme.dto.CategoryDto;
 import ru.practicum.explorewithme.dto.event.EventFullDto;
 import ru.practicum.explorewithme.model.Category;
 
+@UtilityClass
 public class CategoryMapper {
-    public static Category toCategory(CategoryDto categoryDto) {
+    public Category toCategory(CategoryDto categoryDto) {
         return new Category(categoryDto.getId(), categoryDto.getName());
     }
 
-    public static CategoryDto toCategoryDto(Category category) {
+    public CategoryDto toCategoryDto(Category category) {
         return new CategoryDto(category.getId(), category.getName());
     }
 
