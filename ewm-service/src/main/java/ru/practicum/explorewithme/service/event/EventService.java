@@ -19,7 +19,7 @@ public interface EventService {
 
     EventFullDto getById(Long eventId);
 
-    EventFullDto confirmRequest(Long eventId);
+    EventFullDto rejectRequest(Long eventId);
 
     List<EventFullDto> get(List<Long> users, List<Status> states, List<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, PageRequest pageRequest);
 

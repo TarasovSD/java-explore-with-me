@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 import ru.practicum.explorewithme.dto.compilation.CompilationFullDto;
 
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
+
 @RestController
 @RequestMapping(path = "/compilations")
 @Slf4j
@@ -32,8 +35,8 @@ public class CompilationPublicController {
 
     @GetMapping()
     public CompilationFullDto[] get(@RequestParam(required = false) Boolean pinned,
-                                    @RequestParam(defaultValue = "0") Integer from,
-                                    @RequestParam(defaultValue = "10") Integer size) {
+                                    @PositiveOrZero @RequestParam(defaultValue = "0") Integer from,
+                                    @Positive @RequestParam(defaultValue = "10") Integer size) {
         log.info("Запрос подборок");
         return webClient
                 .get()

@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
+import ru.practicum.explorewithme.HitClient;
 import ru.practicum.explorewithme.dto.HitDto;
 import ru.practicum.explorewithme.dto.RequestDto;
 import ru.practicum.explorewithme.dto.event.EventDto;
@@ -13,6 +13,7 @@ import ru.practicum.explorewithme.dto.event.EventUpdateDto;
 import ru.practicum.explorewithme.exceptions.*;
 import ru.practicum.explorewithme.mapper.CategoryMapper;
 import ru.practicum.explorewithme.mapper.EventMapper;
+import ru.practicum.explorewithme.mapper.LocationMapper;
 import ru.practicum.explorewithme.mapper.RequestMapper;
 import ru.practicum.explorewithme.model.*;
 import ru.practicum.explorewithme.repository.CategoryRepository;
@@ -34,67 +35,62 @@ public class EventServiceImpl implements EventService {
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
 
-    private final WebClient webClient;
+    private final DateTimeFormatter formatter;
 
-    DateTimeFormatter formatter;
+    private final HitClient hitClient;
 
-    public EventServiceImpl(EventRepository eventRepository, CategoryRepository categoryRepository, UserRepository userRepository, RequestRepository requestRepository, WebClient.Builder builder) {
+    public EventServiceImpl(EventRepository eventRepository, CategoryRepository categoryRepository, UserRepository userRepository, RequestRepository requestRepository, HitClient hitClient) {
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.requestRepository = requestRepository;
-        this.webClient = builder.baseUrl("http://stats-server:9090/").build();
         this.formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        this.hitClient = hitClient;
     }
 
     @Override
     @Transactional
     public EventFullDto create(EventDto eventDto, Long userId) {
         LocalDateTime creationOn = LocalDateTime.now();
-        User foundUser = userRepository.findById(userId).get();
-        Event eventToSave = EventMapper.toEvent(1L, eventDto, eventDto.getLocation().getLat(), eventDto.getLocation().getLon(), creationOn, foundUser,
-                null, Status.PENDING);
+        User foundUser = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        Category category = categoryRepository.findById(eventDto.getCategory())
+                .orElseThrow(() -> new EventNotFoundException("Категория не найдена"));
+        Event eventToSave = EventMapper.toEvent(1L, eventDto, LocationMapper.toLocation(eventDto.getLocation()),
+                creationOn, foundUser, null, Status.PENDING, category);
         Event savedEvent = eventRepository.save(eventToSave);
-        Category category = categoryRepository.findById(eventDto.getCategory()).get();
-        EventFullDto.CategoryDtoForEvent categoryDtoForEvent = new EventFullDto.CategoryDtoForEvent(category.getId(),
-                category.getName());
-        User user = userRepository.findById(userId).get();
-        Location location = new Location(eventToSave.getLat(), eventToSave.getLon());
-        return EventMapper.toEventFullDto(savedEvent, categoryDtoForEvent, user, location, 0L, 0L);
+        EventFullDto.CategoryDtoForEvent categoryDtoForEvent = CategoryMapper.toCategoryDtoForEvent(category);
+        Location location = eventToSave.getLocation();
+        return EventMapper.toEventFullDto(savedEvent, categoryDtoForEvent, foundUser, location, 0L, 0L);
     }
 
     @Override
     public List<EventFullDto> getByUserId(Long userId, PageRequest pageRequest) {
-        User foundUser = userRepository.findById(userId).get();
+        User foundUser = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         List<Event> events = eventRepository.findEventByInitiatorId(foundUser, pageRequest);
         List<EventFullDto> eventsDto = new ArrayList<>();
-        List<Category> categories = categoryRepository.findAll();
+        List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvents(Status.CONFIRMED, events);
+        List<HitDto> hits = hitClient.hits(events);
         for (Event event : events) {
-            Category category = null;
-            for (Category foundCategory : categories) {
-                if (foundCategory.getId().equals(event.getCategory())) {
-                    category = foundCategory;
+            Category category = event.getCategory();
+            EventFullDto.CategoryDtoForEvent categoryDtoForEvent = CategoryMapper.toCategoryDtoForEvent(category);
+            Location location = event.getLocation();
+            List<Request> confirmedEventRequests = new ArrayList<>();
+            for (Request request : confirmedRequests) {
+                if (event.equals(request.getEvent())) {
+                    confirmedEventRequests.add(request);
                 }
             }
-            if (category == null) {
-                throw new CategoryNotFoundException("Категория не найдена");
+            long numberOfConfirmedRequests = confirmedEventRequests.size();
+            List<HitDto> eventHits = new ArrayList<>();
+            for (HitDto hitDto : hits) {
+                String uri = "/events/" + event.getId();
+                if (hitDto.getUri().equals(uri)) {
+                    eventHits.add(hitDto);
+                }
             }
-            EventFullDto.CategoryDtoForEvent categoryDtoForEvent = getCategoryDtoForEvent(Optional.of(category));
-            Location location = new Location(event.getLat(), event.getLon());
-            List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
-            long numberOfConfirmedRequests = confirmedRequests.size();
-            String eventId = event.getId().toString();
-            HitDto[] hits = webClient
-                    .get()
-                    .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=/events/{eventId}&unique=false", eventId)
-                    .retrieve().bodyToMono(HitDto[].class)
-                    .block();
-            long numberOfViews;
-            if (hits != null) {
-                numberOfViews = hits.length;
-            } else {
-                numberOfViews = 0;
-            }
+            long numberOfViews = eventHits.size();
             EventFullDto eventFullDto = EventMapper.toEventFullDto(event, categoryDtoForEvent, foundUser, location, numberOfConfirmedRequests, numberOfViews);
             eventsDto.add(eventFullDto);
         }
@@ -105,13 +101,8 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public EventFullDto publish(Long eventId) {
         EventFullDto eventFullDtoForPublish = getById(eventId);
-        Optional<Event> eventForPublishOpt = eventRepository.findById(eventId);
-        Event eventForPublish;
-        if (eventForPublishOpt.isPresent()) {
-            eventForPublish = eventForPublishOpt.get();
-        } else {
-            throw new EventNotFoundException("Событие не найдено");
-        }
+        Event eventForPublish = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
         LocalDateTime publishedOn = LocalDateTime.now();
         eventForPublish.setPublishedOn(publishedOn);
         eventForPublish.setState(Status.PUBLISHED);
@@ -121,45 +112,27 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public EventFullDto getById(Long eventId) {
-        Optional<Event> event = eventRepository.findById(eventId);
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
         EventFullDto eventFullDto;
-        if (event.isPresent()) {
-            EventFullDto.CategoryDtoForEvent categoryDtoForEvent =
-                    getCategoryDtoForEvent(categoryRepository.findById(event.get().getCategory()));
-            User user = userRepository.findById(event.get().getInitiatorId().getId()).get();
-            Location location = new Location(event.get().getLat(), event.get().getLon());
-            List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event.get());
-            long numberOfConfirmedRequests = confirmedRequests.size();
-            String foundEventId = eventId.toString();
-            HitDto[] hits = webClient
-                    .get()
-                    .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=/events/{foundEventId}&unique=false", foundEventId)
-                    .retrieve().bodyToMono(HitDto[].class)
-                    .block();
-            long numberOfViews;
-            if (hits != null) {
-                numberOfViews = hits.length;
-            } else {
-                numberOfViews = 0;
-            }
-            eventFullDto = EventMapper.toEventFullDto(event.get(), categoryDtoForEvent, user, location, numberOfConfirmedRequests, numberOfViews);
-        } else {
-            throw new EventNotFoundException("Событие не найдено");
-        }
+        EventFullDto.CategoryDtoForEvent categoryDtoForEvent = CategoryMapper.toCategoryDtoForEvent(event.getCategory());
+        User user = event.getInitiatorId();
+        Location location = event.getLocation();
+        List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
+        long numberOfConfirmedRequests = confirmedRequests.size();
+        List<HitDto> hits = hitClient.hits(List.of(event));
+        long numberOfViews = hits.size();
+        eventFullDto = EventMapper
+                .toEventFullDto(event, categoryDtoForEvent, user, location, numberOfConfirmedRequests, numberOfViews);
         return eventFullDto;
     }
 
     @Override
     @Transactional
-    public EventFullDto confirmRequest(Long eventId) {
+    public EventFullDto rejectRequest(Long eventId) {
         EventFullDto eventFullDtoForPublish = getById(eventId);
-        Optional<Event> eventForPublishOpt = eventRepository.findById(eventId);
-        Event eventForPublish;
-        if (eventForPublishOpt.isPresent()) {
-            eventForPublish = eventForPublishOpt.get();
-        } else {
-            throw new EventNotFoundException("Событие не найдено");
-        }
+        Event eventForPublish = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
         LocalDateTime publishedOn = LocalDateTime.now();
         eventForPublish.setPublishedOn(publishedOn);
         eventForPublish.setState(Status.CANCELED);
@@ -169,7 +142,6 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventFullDto> get(List<Long> users, List<Status> states, List<Long> categories,
                                   LocalDateTime rangeStart, LocalDateTime rangeEnd, PageRequest pageRequest) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         if (users.isEmpty()) {
             List<User> allUsers = userRepository.findAll();
             for (User user : allUsers) {
@@ -177,14 +149,7 @@ public class EventServiceImpl implements EventService {
                 users.add(userId);
             }
         }
-        List<User> allUsers = new ArrayList<>();
-        for (Long id : users) {
-            Optional<User> userOpt = userRepository.findById(id);
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                allUsers.add(user);
-            }
-        }
+        List<User> allUsers = userRepository.getUsersById(users);
         if (states.isEmpty()) {
             states.add(Status.PENDING);
             states.add(Status.PUBLISHED);
@@ -206,32 +171,28 @@ public class EventServiceImpl implements EventService {
         List<Event> events = eventRepository.getEvents(allUsers, states, categories,
                 rangeStart, rangeEnd, pageRequest);
         List<EventFullDto> eventsDto = new ArrayList<>();
+        List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvents(Status.CONFIRMED, events);
+        List<HitDto> hits = hitClient.hits(events);
         for (Event e : events) {
-            Optional<Category> categoryOpt = categoryRepository.findById(e.getCategory());
-            Category category;
-            if (categoryOpt.isPresent()) {
-                category = categoryOpt.get();
-            } else {
-                throw new CategoryNotFoundException("Категория не найдена");
+            Category category = e.getCategory();
+            EventFullDto.CategoryDtoForEvent categoryDtoForEvent = CategoryMapper.toCategoryDtoForEvent(category);
+            User user = e.getInitiatorId();
+            Location location = e.getLocation();
+            List<Request> confirmedEventRequests = new ArrayList<>();
+            for (Request request : confirmedRequests) {
+                if (e.equals(request.getEvent())) {
+                    confirmedEventRequests.add(request);
+                }
             }
-            EventFullDto.CategoryDtoForEvent categoryDtoForEvent = new EventFullDto.CategoryDtoForEvent(category.getId(),
-                    category.getName());
-            User user = userRepository.findById(e.getInitiatorId().getId()).get();
-            Location location = new Location(e.getLat(), e.getLon());
-            List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, e);
-            long numberOfConfirmedRequests = confirmedRequests.size();
-            String eventId = e.getId().toString();
-            HitDto[] hits = webClient
-                    .get()
-                    .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=/events/{eventId}&unique=false", eventId)
-                    .retrieve().bodyToMono(HitDto[].class)
-                    .block();
-            long numberOfViews;
-            if (hits != null) {
-                numberOfViews = hits.length;
-            } else {
-                numberOfViews = 0;
+            long numberOfConfirmedRequests = confirmedEventRequests.size();
+            List<HitDto> eventHits = new ArrayList<>();
+            for (HitDto hitDto : hits) {
+                String uri = "/events/" + e.getId();
+                if (hitDto.getUri().equals(uri)) {
+                    eventHits.add(hitDto);
+                }
             }
+            long numberOfViews = eventHits.size();
             eventsDto.add(EventMapper.toEventFullDto(e, categoryDtoForEvent, user, location, numberOfConfirmedRequests, numberOfViews));
         }
         return eventsDto;
@@ -240,37 +201,25 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public EventFullDto redact(EventDto eventDto, Long eventId) {
-        Optional<Event> eventOpt = eventRepository.findById(eventId);
-        Event event;
-        if (eventOpt.isPresent()) {
-            event = eventOpt.get();
-        } else {
-            throw new EventNotFoundException("Событие не найдено");
-        }
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
+        Category category = categoryRepository.findById(eventDto.getCategory())
+                .orElseThrow(() -> new CategoryNotFoundException("Категория не найдена"));
         if (eventDto.getAnnotation() != null || !eventDto.getAnnotation().isBlank()) {
             event.setAnnotation(eventDto.getAnnotation());
         }
-        Optional<Category> categoryOpt = categoryRepository.findById(eventDto.getCategory());
-        Category category;
-        if (categoryOpt.isPresent()) {
-            category = categoryOpt.get();
-        } else {
-            throw new CategoryNotFoundException("Категория не найдена");
-        }
         if (eventDto.getCategory() != null) {
-            event.setCategory(category.getId());
+            event.setCategory(category);
         }
         if (eventDto.getDescription() != null || !eventDto.getDescription().isBlank()) {
             event.setDescription(eventDto.getDescription());
         }
         if (eventDto.getEventDate() != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            LocalDateTime eventDate = LocalDateTime.parse(eventDto.getEventDate(), formatter);
+            LocalDateTime eventDate = eventDto.getEventDate();
             event.setEventDate(eventDate);
         }
         if (eventDto.getLocation() != null) {
-            event.setLat(eventDto.getLocation().getLat());
-            event.setLon(eventDto.getLocation().getLon());
+            event.setLocation(LocationMapper.toLocation(eventDto.getLocation()));
         }
         if (eventDto.getPaid() != null) {
             event.setPaid(eventDto.getPaid());
@@ -284,21 +233,23 @@ public class EventServiceImpl implements EventService {
         if (eventDto.getTitle() != null || eventDto.getTitle().isBlank()) {
             event.setTitle(eventDto.getTitle());
         }
-
         Event updatedEvent = eventRepository.save(event);
-        return getEventFullDto(event, updatedEvent, category);
+        return getEventFullDto(updatedEvent);
     }
 
     @Override
     @Transactional
     public EventFullDto update(EventUpdateDto eventDto, Long userId) {
-        Event event = eventRepository.findById(eventDto.getEventId()).orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
+        Event event = eventRepository.findById(eventDto.getEventId())
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
 
         if (eventDto.getAnnotation() != null || !eventDto.getAnnotation().isBlank()) {
             event.setAnnotation(eventDto.getAnnotation());
         }
         if (eventDto.getCategory() != null) {
-            event.setCategory(eventDto.getCategory());
+            Category category = categoryRepository.findById(eventDto.getCategory())
+                    .orElseThrow(() -> new CategoryNotFoundException("Категория не найдена"));
+            event.setCategory(category);
         }
         if (eventDto.getDescription() != null || !eventDto.getDescription().isBlank()) {
             event.setDescription(eventDto.getDescription());
@@ -319,26 +270,13 @@ public class EventServiceImpl implements EventService {
         }
 
         Event updatedEvent = eventRepository.save(event);
-
-        Optional<Category> categoryOpt = categoryRepository.findById(event.getCategory());
-        Category category;
-        if (categoryOpt.isPresent()) {
-            category = categoryOpt.get();
-        } else {
-            throw new CategoryNotFoundException("Категория не найдена");
-        }
-        return getEventFullDto(event, updatedEvent, category);
+        return getEventFullDto(updatedEvent);
     }
 
     @Override
     public EventFullDto getByIdByUser(Long userId, Long eventId) {
-        Optional<Event> eventOptional = eventRepository.findById(eventId);
-        Event event;
-        if (eventOptional.isPresent()) {
-            event = eventOptional.get();
-        } else {
-            throw new EventNotFoundException("Событие не найдено");
-        }
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
         if (Objects.equals(event.getInitiatorId().getId(), userId)) {
             return mapToEventFullDto(userId, event);
         } else {
@@ -349,7 +287,8 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public EventFullDto cancel(Long eventId, Long userId) {
-        Event event = eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
         if (event.getState() == Status.PENDING) {
             event.setState(Status.CANCELED);
         } else {
@@ -361,8 +300,10 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public RequestDto confirmRequest(Long eventId, Long userId, Long reqId) {
-        Request request = requestRepository.findById(reqId).orElseThrow(() -> new RequestNotFoundException("Запрос не найден"));
-        Event event = eventRepository.findById(eventId).orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
+        Request request = requestRepository.findById(reqId)
+                .orElseThrow(() -> new RequestNotFoundException("Запрос не найден"));
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
         if (!Objects.equals(request.getRequester().getId(), userId)) {
             List<Request> confirmedRequest = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
             if (confirmedRequest.size() < event.getParticipantLimit()) {
@@ -380,14 +321,8 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional
     public RequestDto rejectRequest(Long eventId, Long userId, Long reqId) {
-        Optional<Request> requestOpt = requestRepository.findById(reqId);
-        Request request;
-        if (requestOpt.isPresent()) {
-            request = requestOpt.get();
-        } else {
-            throw new RequestNotFoundException("Запрос не найден");
-        }
-
+        Request request = requestRepository.findById(reqId)
+                .orElseThrow(() -> new RequestNotFoundException("Запрос не найден"));
         if (!Objects.equals(request.getRequester().getId(), userId)) {
             request.setStatus(Status.REJECTED);
         } else {
@@ -420,16 +355,10 @@ public class EventServiceImpl implements EventService {
         } else if (sort.equals("VIEWS")) {
             List<Event> foundEvents = eventRepository.getEventsByFilterWithoutSort(categories, paid, rangeStart,
                     rangeEnd, pageRequest);
-            HitDto[] hits = webClient
-                    .get()
-                    .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=&unique=false")
-                    .retrieve().bodyToMono(HitDto[].class)
-                    .block();
+            List<HitDto> hits = hitClient.hits(foundEvents);
             List<String> uris = new ArrayList<>();
-            if (hits != null) {
-                for (HitDto hitDto : hits) {
-                    uris.add(hitDto.getUri());
-                }
+            for (HitDto hitDto : hits) {
+                uris.add(hitDto.getUri());
             }
             Map<Long, Event> eventViews = new TreeMap<>(Comparator.reverseOrder());
             for (Event event : foundEvents) {
@@ -449,19 +378,53 @@ public class EventServiceImpl implements EventService {
                     rangeEnd, pageRequest);
         }
         List<EventFullDto> eventsDto = new ArrayList<>();
+        List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvents(Status.CONFIRMED, events);
+        List<HitDto> hits = hitClient.hits(events);
         if (onlyAvailable) {
             for (Event event : events) {
-                List<Request> confirmedRequest = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
-                if (event.getAnnotation().toLowerCase().contains(text.toLowerCase()) || event.getDescription().toLowerCase().contains(text.toLowerCase())) {
-                    if (confirmedRequest.size() < event.getParticipantLimit()) {
-                        eventsDto.add(mapToEventFullDto(event.getInitiatorId().getId(), event));
+                List<Request> confirmedEventRequests = new ArrayList<>();
+                for (Request request : confirmedRequests) {
+                    if (event.equals(request.getEvent())) {
+                        confirmedEventRequests.add(request);
+                    }
+                }
+                if (event.getAnnotation().toLowerCase().contains(text.toLowerCase())
+                        || event.getDescription().toLowerCase().contains(text.toLowerCase())) {
+                    if (confirmedEventRequests.size() < event.getParticipantLimit()) {
+                        List<HitDto> eventHits = new ArrayList<>();
+                        for (HitDto hitDto : hits) {
+                            String uri = "/events/" + event.getId();
+                            if (hitDto.getUri().equals(uri)) {
+                                eventHits.add(hitDto);
+                            }
+                        }
+                        eventsDto.add(EventMapper.toEventFullDto(event,
+                                CategoryMapper.toCategoryDtoForEvent(event.getCategory()),
+                                event.getInitiatorId(),
+                                event.getLocation(), (long) confirmedEventRequests.size(), (long) eventHits.size()));
                     }
                 }
             }
         } else {
             for (Event event : events) {
+                List<HitDto> eventHits = new ArrayList<>();
+                for (HitDto hitDto : hits) {
+                    String uri = "/events/" + event.getId();
+                    if (hitDto.getUri().equals(uri)) {
+                        eventHits.add(hitDto);
+                    }
+                }
+                List<Request> confirmedEventRequests = new ArrayList<>();
+                for (Request request : confirmedRequests) {
+                    if (event.equals(request.getEvent())) {
+                        confirmedEventRequests.add(request);
+                    }
+                }
                 if (event.getAnnotation().toLowerCase().contains(text.toLowerCase()) || event.getDescription().toLowerCase().contains(text.toLowerCase())) {
-                    eventsDto.add(mapToEventFullDto(event.getInitiatorId().getId(), event));
+                    eventsDto.add(EventMapper.toEventFullDto(event,
+                            CategoryMapper.toCategoryDtoForEvent(event.getCategory()),
+                            event.getInitiatorId(),
+                            event.getLocation(), (long) confirmedEventRequests.size(), (long) eventHits.size()));
                 }
             }
         }
@@ -469,100 +432,36 @@ public class EventServiceImpl implements EventService {
     }
 
     private EventFullDto mapToEventFullDto(Long userId, Event event) {
-        Optional<Category> categoryOpt = categoryRepository.findById(event.getCategory());
-        Category category;
-        if (categoryOpt.isPresent()) {
-            category = categoryOpt.get();
-        } else {
-            throw new CategoryNotFoundException("Категория не найдена");
-        }
-        User user;
-        Optional<User> userOpt = userRepository.findById(userId);
-        if (userOpt.isPresent()) {
-            user = userOpt.get();
-        } else {
-            throw new UserNotFoundException("Пользователь не найден");
-        }
-        Location location = new Location(event.getLat(), event.getLon());
+        Category category = event.getCategory();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        Location location = event.getLocation();
         List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
         long numberOfConfirmedRequests = confirmedRequests.size();
-        String eventId = event.getId().toString();
-        HitDto[] hits = webClient
-                .get()
-                .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=/events/{eventId}&unique=false", eventId)
-                .retrieve().bodyToMono(HitDto[].class)
-                .block();
-        long numberOfViews;
-        if (hits != null) {
-            numberOfViews = hits.length;
-        } else {
-            numberOfViews = 0;
-        }
+        List<HitDto> hits = hitClient.hits(List.of(event));
+        long numberOfViews = hits.size();
         return EventMapper.toEventFullDto(event, CategoryMapper.toCategoryDtoForEvent(category), user, location, numberOfConfirmedRequests, numberOfViews);
     }
 
-    private EventFullDto getEventFullDto(Event event, Event updatedEvent, Category category) {
-        EventFullDto.CategoryDtoForEvent categoryDtoForEvent = CategoryMapper.toCategoryDtoForEvent(category);
-        Optional<User> userOpt = userRepository.findById(event.getInitiatorId().getId());
-        User user;
-        if (userOpt.isPresent()) {
-            user = userOpt.get();
-        } else {
-            throw new UserNotFoundException("Пользователь не найден");
-        }
-        Location location = new Location(event.getLat(), event.getLon());
-        List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
+    private EventFullDto getEventFullDto(Event updatedEvent) {
+        EventFullDto.CategoryDtoForEvent categoryDtoForEvent = CategoryMapper.toCategoryDtoForEvent(updatedEvent.getCategory());
+        User user = updatedEvent.getInitiatorId();
+        Location location = updatedEvent.getLocation();
+        List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, updatedEvent);
         long numberOfConfirmedRequests = confirmedRequests.size();
-        String eventId = event.getId().toString();
-        HitDto[] hits = webClient
-                .get()
-                .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=/events/{eventId}&unique=false", eventId)
-                .retrieve().bodyToMono(HitDto[].class)
-                .block();
-        long numberOfViews;
-        if (hits != null) {
-            numberOfViews = hits.length;
-        } else {
-            numberOfViews = 0;
-        }
+        List<HitDto> hits = hitClient.hits(List.of(updatedEvent));
+        long numberOfViews = hits.size();
         return EventMapper.toEventFullDto(updatedEvent, categoryDtoForEvent, user, location, numberOfConfirmedRequests, numberOfViews);
     }
 
     private EventFullDto getEventFullDto(EventFullDto eventFullDtoForPublish, Event eventForPublish) {
-        User user;
-        Optional<User> userOpt = userRepository.findById(eventFullDtoForPublish.getInitiator().getId());
-        if (userOpt.isPresent()) {
-            user = userOpt.get();
-        } else {
-            throw new UserNotFoundException("Пользователь не найден");
-        }
-        Location location = new Location(eventForPublish.getLat(), eventForPublish.getLon());
+        User user = eventForPublish.getInitiatorId();
+        Location location = eventForPublish.getLocation();
         List<Request> confirmedRequests = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, eventForPublish);
         long numberOfConfirmedRequests = confirmedRequests.size();
-        String eventId = eventForPublish.getId().toString();
-        HitDto[] hits = webClient
-                .get()
-                .uri("/stats?start=2000-01-01 00:00:00&end=3000-01-01 00:00:00&uris=/events/{eventId}&unique=false", eventId)
-                .retrieve().bodyToMono(HitDto[].class)
-                .block();
-        long numberOfViews;
-        if (hits != null) {
-            numberOfViews = hits.length;
-        } else {
-            numberOfViews = 0;
-        }
+        List<HitDto> hits = hitClient.hits(List.of(eventForPublish));
+        long numberOfViews = hits.size();
         return EventMapper.toEventFullDto(eventRepository.save(eventForPublish), eventFullDtoForPublish.getCategory(),
                 user, location, numberOfConfirmedRequests, numberOfViews);
-    }
-
-    private EventFullDto.CategoryDtoForEvent getCategoryDtoForEvent(Optional<Category> categoryOptional) {
-        Category category;
-        if (categoryOptional.isPresent()) {
-            category = categoryOptional.get();
-        } else {
-            throw new CategoryNotFoundException("Категория не найдена");
-        }
-        return new EventFullDto.CategoryDtoForEvent(category.getId(),
-                category.getName());
     }
 }

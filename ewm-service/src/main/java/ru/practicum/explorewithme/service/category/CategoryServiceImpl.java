@@ -1,5 +1,6 @@
 package ru.practicum.explorewithme.service.category;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -10,19 +11,15 @@ import ru.practicum.explorewithme.mapper.CategoryMapper;
 import ru.practicum.explorewithme.model.Category;
 import ru.practicum.explorewithme.repository.CategoryRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @Slf4j
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
-
-    public CategoryServiceImpl(CategoryRepository categoryRepository) {
-        this.categoryRepository = categoryRepository;
-    }
 
     @Override
     @Transactional
@@ -34,8 +31,10 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional
     public CategoryDto update(CategoryDto categoryDto) {
-        Category categoryToUpdate = CategoryMapper.toCategory(categoryDto);
-        return CategoryMapper.toCategoryDto(categoryRepository.save(categoryToUpdate));
+        Category category = categoryRepository.findById(categoryDto.getId()).orElseThrow(()
+                -> new CategoryNotFoundException("Категория не найдена"));
+        category.setName(categoryDto.getName());
+        return CategoryMapper.toCategoryDto(category);
     }
 
     @Override
@@ -54,10 +53,6 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public List<CategoryDto> find(PageRequest pageRequest) {
         List<Category> categories = categoryRepository.findAll(pageRequest).getContent();
-        List<CategoryDto> categoriesDto = new ArrayList<>();
-        for (Category category : categories) {
-            categoriesDto.add(CategoryMapper.toCategoryDto(category));
-        }
-        return categoriesDto;
+        return CategoryMapper.toCategoryDtos(categories);
     }
 }

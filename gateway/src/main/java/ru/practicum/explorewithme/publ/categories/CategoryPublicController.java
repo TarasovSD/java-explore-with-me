@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 import ru.practicum.explorewithme.dto.CategoryDto;
 
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
+
 @RestController
 @RequestMapping("/categories")
 @Slf4j
@@ -31,8 +34,8 @@ public class CategoryPublicController {
     }
 
     @GetMapping()
-    public CategoryDto[] get(@RequestParam(defaultValue = "0") Long from,
-                             @RequestParam(defaultValue = "10") Long size) {
+    public CategoryDto[] get(@PositiveOrZero @RequestParam(defaultValue = "0") Long from,
+                             @Positive @RequestParam(defaultValue = "10") Long size) {
         log.info("Запрос всех категорий");
         return webClient
                 .get()

@@ -72,7 +72,7 @@ public class HitServiceImpl implements HitService {
             }
         }
         List<ViewStatsDto> viewStatsDtoList = new ArrayList<>();
-        List<Hit> hits = hitRepository.findAllByUris(uris);
+        List<Hit> hits = hitRepository.findAllByUris(uriList);
         for (String uri : uriList) {
             List<Hit> hitsCount = new ArrayList<>();
             for (Hit hit : hits) {

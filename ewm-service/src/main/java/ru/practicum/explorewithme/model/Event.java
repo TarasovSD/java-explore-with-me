@@ -25,18 +25,17 @@ public class Event {
     @Column(name = "annotation", length = 500)
     @NotBlank
     private String annotation;
-    @Column(name = "category", nullable = false)
-    private Long category;
+//    @Column(name = "category", nullable = false)
+    @JoinColumn(name = "category", nullable = false)
+    @ManyToOne
+    private Category category;
     @Column(name = "description", length = 5000)
     @NotBlank
     private String description;
     @Column(name = "event_date", nullable = false)
     private LocalDateTime eventDate;
-
-    @Column(name = "lat", nullable = false)
-    private Float lat;
-    @Column(name = "lon", nullable = false)
-    private Float lon;
+    @Column(nullable = false)
+    private Location location;
     @Column(name = "paid", nullable = false)
     private Boolean paid;
     @Column(name = "participant_limit", nullable = false)
@@ -61,14 +60,13 @@ public class Event {
     @ManyToMany (mappedBy = "events")
     private Set<Compilation> compilations = new HashSet<>();
 
-    public Event(Long id, String annotation, Long category, String description, LocalDateTime eventDate, Float lat, Float lon, Boolean paid, Long participantLimit, Boolean requestModeration, String title, LocalDateTime createdOn, User initiatorId, LocalDateTime publishedOn, Status state) {
+    public Event(Long id, String annotation, Category category, String description, LocalDateTime eventDate, Location location, Boolean paid, Long participantLimit, Boolean requestModeration, String title, LocalDateTime createdOn, User initiatorId, LocalDateTime publishedOn, Status state) {
         this.id = id;
         this.annotation = annotation;
         this.category = category;
         this.description = description;
         this.eventDate = eventDate;
-        this.lat = lat;
-        this.lon = lon;
+        this.location = location;
         this.paid = paid;
         this.participantLimit = participantLimit;
         this.requestModeration = requestModeration;

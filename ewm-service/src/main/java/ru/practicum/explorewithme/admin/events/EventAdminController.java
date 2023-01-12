@@ -32,7 +32,7 @@ public class EventAdminController {
     @PatchMapping("/{eventId}/reject")
     public EventFullDto reject(@PathVariable Long eventId) {
         log.info("Отклонение события с ID {}", eventId);
-        return eventService.confirmRequest(eventId);
+        return eventService.rejectRequest(eventId);
     }
 
     @GetMapping()

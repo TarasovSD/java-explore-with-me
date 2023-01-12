@@ -7,12 +7,13 @@ import org.springframework.stereotype.Repository;
 import ru.practicum.explorewithme.model.User;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByName(String name);
 
     @Query("select  u from User u where u.id in :ids")
     List<User> getUsersById(List<Long> ids, PageRequest pageRequest);
+
+    @Query("select  u from User u where u.id in :ids")
+    List<User> getUsersById(List<Long> ids);
 }

@@ -52,6 +52,12 @@ public class GlobalExceptionHandler extends RuntimeException {
         return new ResponseEntity<>("Превышено число запросов на участие в событии", HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(value = RequestNotCreatedException.class)
+    public ResponseEntity<String> handleRequestNotCreatedException(final RequestNotCreatedException e) {
+        log.info(e.getMessage());
+        return new ResponseEntity<>(e.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(value = EventHasNoStatusPendingException.class)
     public ResponseEntity<String> handleEventHasNoStatusPendingException(final EventHasNoStatusPendingException e) {
         log.info(e.getMessage());
