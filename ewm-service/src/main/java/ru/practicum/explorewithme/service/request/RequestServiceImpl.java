@@ -45,11 +45,7 @@ public class RequestServiceImpl implements RequestService {
         if (!event.getState().equals(Status.PUBLISHED)) {
             throw new RequestNotCreatedException("Невозможно создать запрос на участие в неопубликованном событии");
         }
-        if (event.getParticipantLimit() == 0) {
-            throw new RequestNotCreatedException("Невозможно создать запрос на участие в событии, " +
-                    "так как заявленное количество участников события равно нулю");
-        }
-        if (event.getParticipantLimit() <= requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event).size()) {
+        if (event.getParticipantLimit() > 0 && event.getParticipantLimit() <= requestRepository.getRequestsCountByStatusAndEvent(Status.CONFIRMED, event)) {
             throw new RequestNotCreatedException("Невозможно создать запрос на участие в событии, " +
                     "так как достигнуто максимальное количество подтвежденных участников");
         }

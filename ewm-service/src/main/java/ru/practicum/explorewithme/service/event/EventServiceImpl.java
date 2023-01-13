@@ -255,7 +255,6 @@ public class EventServiceImpl implements EventService {
             event.setDescription(eventDto.getDescription());
         }
         if (eventDto.getEventDate() != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             LocalDateTime eventDate = LocalDateTime.parse(eventDto.getEventDate(), formatter);
             event.setEventDate(eventDate);
         }
@@ -304,13 +303,27 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new RequestNotFoundException("Запрос не найден"));
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new EventNotFoundException("Событие не найдено"));
+        if (!event.getInitiatorId().getId().equals(userId)) {
+            throw new RequestNotConfirmedException("Подтвердить запрос на участие в событии может только инициатор события");
+        }
+        if (!eventId.equals(request.getEvent().getId())) {
+            throw new RequestNotConfirmedException("Идентификатор события не соответствует идентификатору события в запросе на подтверждение");
+        }
+        if (event.getParticipantLimit() == 0 || !request.getEvent().getRequestModeration()) {
+            throw new RequestNotConfirmedException("Подтверждение на участие в событии не требуется");
+        }
         if (!Objects.equals(request.getRequester().getId(), userId)) {
-            List<Request> confirmedRequest = requestRepository.findRequestsByStatusAndEvent(Status.CONFIRMED, event);
-            if (confirmedRequest.size() < event.getParticipantLimit()) {
+            Long confirmedRequest = requestRepository.getRequestsCountByStatusAndEvent(Status.CONFIRMED, event);
+            if (event.getParticipantLimit() > 0 && confirmedRequest < event.getParticipantLimit()) {
                 request.setStatus(Status.CONFIRMED);
-                requestRepository.save(request);
             } else {
                 throw new RequestNotConfirmedException("Превышено число запросов на участие в событии");
+            }
+            if (event.getParticipantLimit() <= ++confirmedRequest) {
+                List<Request> requestsForReject = requestRepository.findRequestsByStatusAndEvent(Status.PENDING, event);
+                for (Request requestForReject : requestsForReject) {
+                    requestForReject.setStatus(Status.REJECTED);
+                }
             }
         } else {
             throw new RequestNotFoundException("Запрос не найден");

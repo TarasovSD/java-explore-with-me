@@ -25,7 +25,6 @@ public class Event {
     @Column(name = "annotation", length = 500)
     @NotBlank
     private String annotation;
-//    @Column(name = "category", nullable = false)
     @JoinColumn(name = "category", nullable = false)
     @ManyToOne
     private Category category;

@@ -1,5 +1,6 @@
 package ru.practicum.explorewithme;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import ru.practicum.explorewithme.dto.HitDto;
@@ -14,8 +15,7 @@ public class HitClient {
 
     private final WebClient webClient;
 
-    public HitClient(WebClient.Builder builder) {
-        String basePath = "http://stats-server:9090/";
+    public HitClient(WebClient.Builder builder, @Value("${base.url:http://stats-server:9090/}") String basePath) {
         this.webClient = builder.baseUrl(basePath).build();
     }
 

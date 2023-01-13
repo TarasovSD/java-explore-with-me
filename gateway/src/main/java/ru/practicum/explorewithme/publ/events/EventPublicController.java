@@ -29,10 +29,10 @@ public class EventPublicController {
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 
-    public EventPublicController(@Value("${base.path}") String basePath, @Value("${appName}") String appName, WebClient.Builder builder) {
+    public EventPublicController(@Value("${base.path}") String basePath, @Value("${appName}") String appName, @Value("${base.stats.path}") String baseStatsPath, WebClient.Builder builder) {
         this.appName = appName;
         webClient = builder.baseUrl(basePath).build();
-        statsWebClient = builder.baseUrl("http://stats-server:9090/").build();
+        statsWebClient = builder.baseUrl(baseStatsPath).build();
     }
 
     @GetMapping("/{eventId}")
