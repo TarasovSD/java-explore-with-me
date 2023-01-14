@@ -33,4 +33,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("select e from Event e where e.id in :eventsIds")
     List<Event> findEventsByIdList(List<Long> eventsIds);
+
+    @Query("select e from Event e where e.initiatorId.id in :userSubscribingIds and e.state = :status and e.eventDate > :nowMoment")
+    List<Event> getEventsByInitiatorAndStatus(List<Long> userSubscribingIds, Status status, LocalDateTime nowMoment, PageRequest pageRequest);
 }

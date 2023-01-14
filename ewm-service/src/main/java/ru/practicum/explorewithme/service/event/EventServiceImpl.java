@@ -56,7 +56,7 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         Category category = categoryRepository.findById(eventDto.getCategory())
                 .orElseThrow(() -> new EventNotFoundException("Категория не найдена"));
-        Event eventToSave = EventMapper.toEvent(1L, eventDto, LocationMapper.toLocation(eventDto.getLocation()),
+        Event eventToSave = EventMapper.toEvent(null, eventDto, LocationMapper.toLocation(eventDto.getLocation()),
                 creationOn, foundUser, null, Status.PENDING, category);
         Event savedEvent = eventRepository.save(eventToSave);
         EventFullDto.CategoryDtoForEvent categoryDtoForEvent = CategoryMapper.toCategoryDtoForEvent(category);

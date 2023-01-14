@@ -64,6 +64,18 @@ public class GlobalExceptionHandler extends RuntimeException {
         return new ResponseEntity<>("Событие должно иметь статус Pending", HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(value = SubscriptionAlreadyExistsException.class)
+    public ResponseEntity<String> handleSubscriptionAlreadyExistsException(final SubscriptionAlreadyExistsException e) {
+        log.info(e.getMessage());
+        return new ResponseEntity<>("Подписка уже была создана ранее", HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(value = SubscriptionNotFoundException.class)
+    public ResponseEntity<String> handleSubscriptionNotFoundException(final SubscriptionNotFoundException e) {
+        log.info(e.getMessage());
+        return new ResponseEntity<>("Подписка не найдена", HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(value = CompilationNotFoundException.class)
     public ResponseEntity<String> handleCompilationNotFoundException(final CompilationNotFoundException e) {
         log.info(e.getMessage());
