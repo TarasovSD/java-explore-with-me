@@ -28,8 +28,8 @@ public class SubscriptionPrivateController {
     }
 
     @PostMapping("/subscription/{subscribingId}")
-    public SubscriptionDto create(@PositiveOrZero @PathVariable Long userId,
-                                  @PositiveOrZero @PathVariable Long subscribingId) {
+    public SubscriptionDto create(@Positive @PathVariable Long userId,
+                                  @Positive @PathVariable Long subscribingId) {
         log.info("Запрос пользователем с ID {} на создание подписки на события пользователя с ID {} ", userId, subscribingId);
         return webClient
                 .post()
@@ -40,8 +40,8 @@ public class SubscriptionPrivateController {
     }
 
     @DeleteMapping("/subscription/{subscribingId}")
-    public String remove(@PositiveOrZero @PathVariable Long userId,
-                         @PositiveOrZero @PathVariable Long subscribingId) {
+    public String remove(@Positive @PathVariable Long userId,
+                         @Positive @PathVariable Long subscribingId) {
         log.info("Запрос пользователем с ID {} на удаление подписки на события пользователя с ID {} ", userId, subscribingId);
         return webClient
                 .delete()
@@ -52,7 +52,7 @@ public class SubscriptionPrivateController {
     }
 
     @GetMapping("/subscription/events")
-    public EventFullDto[] getEvents(@PositiveOrZero @PathVariable Long userId,
+    public EventFullDto[] getEvents(@Positive @PathVariable Long userId,
                                     @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
                                     @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
         log.info("Запрос информации об актуальных событиях пользователей, на которых подписан пользователь с ID {}", userId);
@@ -65,7 +65,7 @@ public class SubscriptionPrivateController {
     }
 
     @GetMapping("/subscription")
-    public SubscriptionDto[] get(@PositiveOrZero @PathVariable Long userId,
+    public SubscriptionDto[] get(@Positive @PathVariable Long userId,
                                  @PositiveOrZero @RequestParam(name = "from", defaultValue = "0") Integer from,
                                  @Positive @RequestParam(name = "size", defaultValue = "10") Integer size) {
         log.info("Запрос информации о подписках пользователя с ID {}", userId);
