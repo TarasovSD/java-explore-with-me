@@ -1,4 +1,23 @@
-# java-explore-with-me
-Template repository for ExploreWithMe project.
+# Explore with me
 
-https://github.com/TarasovSD/java-explore-with-me/pull/2#issue-1518726803
+Проект Explore With Me.
+Приложение для поиска, публикации и совместного посещения событий.
+Позволяет создавать пользователей, создавать и публиковать события, 
+искать события, записываться на участие в найденых событиях, подписываться 
+на события других пользователей, получать статистику.
+
+Примеры эндпойнтов:
+
+GET http://localhost:8080/events
+Получение событий с возможностью фильтрации
+
+GET http://localhost:8080/events/{id}
+Получение подробной информации об опубликованном событии по его идентификатору
+
+Основной технологический стек:
+- Java 11;
+- Spring Boot;
+- Hibernate ORM;
+- PostgreSQL;
+- Apache Maven;
+- Docker.
